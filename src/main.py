@@ -8,17 +8,15 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_URL
+from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_URL, WHATS_NEW_URL
 from outputs import control_output
-from utils import find_tag, get_response
+from utils import find_tag, get_response, soup_creator
 
 
 def whats_new(session):
-    whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    response = get_response(session, whats_new_url)
-    if response is None:
+    soup = soup_creator(session, WHATS_NEW_URL)
+    if soup is None:
         return
-    soup = BeautifulSoup(response.text, features='lxml')
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all(
@@ -27,7 +25,7 @@ def whats_new(session):
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
-        version_link = urljoin(whats_new_url, version_a_tag['href'])
+        version_link = urljoin(WHATS_NEW_URL, version_a_tag['href'])
         response = get_response(session, version_link)
         if response is None:
             continue
@@ -42,10 +40,9 @@ def whats_new(session):
 
 
 def latest_versions(session):
-    response = get_response(session, MAIN_DOC_URL)
-    if response is None:
+    soup = soup_creator(session, MAIN_DOC_URL)
+    if soup is None:
         return
-    soup = BeautifulSoup(response.text, 'lxml')
     sidebar = soup.find('div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
     for ul in ul_tags:
@@ -54,7 +51,7 @@ def latest_versions(session):
             break
     else:
         raise Exception('Не найден список c версиями Python')
-    results = [('Ссылка на документацию', 'Версия', 'Статус')]
+    results = []
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
@@ -81,7 +78,6 @@ def download(session):
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
     filename = archive_url.split('/')[-1]
-    print(filename)
     downloads_dir = BASE_DIR / 'downloads'
     downloads_dir.mkdir(exist_ok=True)
     archive_path = downloads_dir / filename
@@ -92,17 +88,16 @@ def download(session):
 
 
 def pep(session):
-    response = get_response(session, PEP_URL)
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = soup_creator(session, PEP_URL)
     section_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
     tbody_tag = find_tag(section_tag, 'tbody')
     tr_tags = tbody_tag.find_all('tr')
-    results = [('Cтатус', 'Количество')]
+    results = []
     pep_sum = defaultdict(list)
     total_sum = 0
     for tr_tag in tqdm(tr_tags):
         total_sum += 1
-        a_tag = find_tag(tr_tag, 'a', attrs={'class': 'reference external'})
+        a_tag = tr_tag.find('a')
         pep_url = urljoin(PEP_URL, a_tag['href'])
         response = get_response(session, pep_url)
         soup = BeautifulSoup(response.text, features='lxml')
