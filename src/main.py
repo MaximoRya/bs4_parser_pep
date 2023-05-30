@@ -22,6 +22,8 @@ def whats_new(session):
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'}
         )
+    # Тесты на сдачу работы требуют прописать заголовок прямо тут...
+    # в виде словаря с выбором заголовка сделал в outputs.py
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
