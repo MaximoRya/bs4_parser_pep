@@ -15,22 +15,20 @@ def control_output(pre_results, cli_args):
     }
     results = [titles[str(cli_args).split(',')[0][16]]]
     results = results + pre_results
-    output = cli_args.output
-    if output == 'pretty':
-        pretty_output(results)
-    elif output == 'file':
-        print(str(cli_args).split(',')[0][16])
-        file_output(results, cli_args)
-    else:
-        default_output(results)
+    output_dict = {
+        'pretty': pretty_output,
+        'file': file_output,
+        None: default_output
+    }
+    output_dict[cli_args.output](results, cli_args)
 
 
-def default_output(results):
+def default_output(results, *args):
     for row in results:
         print(*row)
 
 
-def pretty_output(results):
+def pretty_output(results, *args):
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
